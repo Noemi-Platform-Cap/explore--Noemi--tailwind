@@ -1,0 +1,42 @@
+#!/usr/bin/env ts-node
+import { writeFileSync, existsSync } from "fs";
+import { execSync } from "child_process";
+
+// ===== CONFIG =====
+const creatorName = "Lashawn Spencer";
+const brandName = "Noemi Platform";
+const year = new Date().getFullYear();
+const ocid = "YOUR-OCID-HERE";
+
+// LICENSE TEXT
+const licenseText = `
+${brandName} Ownership & Creator License (${year})
+©${year} ${creatorName}
+OCID: ${ocid}
+All rights reserved.
+`;
+
+// Write LICENSE.txt
+writeFileSync("LICENSE.txt", licenseText);
+console.log("✅ LICENSE.txt created");
+
+// Create simple badge for README
+const badgeMarkdown = `![License](https://img.shields.io/badge/License-${encodeURIComponent(
+  brandName
+)}-blue.svg)`;
+writeFileSync("LICENSE_BADGE.md", badgeMarkdown);
+console.log("✅ LICENSE_BADGE.md created");
+
+// Git commands
+if (existsSync(".git")) {
+  try {
+    execSync("git add LICENSE.txt LICENSE_BADGE.md", { stdio: "inherit" });
+    execSync('git commit -m "Add license and badge"', { stdio: "inherit" });
+    execSync("git push", { stdio: "inherit" });
+    console.log("✅ Changes committed and pushed to GitHub");
+  } catch {
+    console.error("❌ Git failed. Ensure Git is installed and repo has a remote.");
+  }
+} else {
+  console.log("⚠️ Not a git repository. Skipping commit/push.");
+}
