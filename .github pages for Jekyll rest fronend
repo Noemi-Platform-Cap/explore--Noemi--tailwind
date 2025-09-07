@@ -1,0 +1,102 @@
+name: Build and Publish Jekyll for GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📂 checkout
+        uses: actions/checkout@v5.0.0
+
+      - name: 💎 setup ruby
+        uses: ruby/setup-ruby@44511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0
+        with:
+          bundler-cache: true
+          cache-version: 0
+
+      - name: 📄 setup pages
+        id: pages
+        uses: actions/configure-pages@v5.0.0
+
+      - name: 🔨 install dependencies & build site
+        uses: actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697 # v1.0.13
+
+      - name: ⚡️ upload artifact
+        uses: actions/upload-pages-artifact@v4.0.0
+
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚀 deploy
+        id: deployment
+        uses: actions/deploy-pages@v4.0.5
+#!/usr/bin/env ts-node
+import { writeFileSync, mkdirSync, existsSync } from "fs";
+import { execSync } from "child_process";
+import path from "path";
+
+// ===== CONFIG =====
+const repoName = "your-repo"; // replace with your GitHub repo name
+const githubUser = "username"; // replace with your GitHub username
+const apiFolder = "api";
+
+// Example data for endpoints
+const endpoints = {
+  "data.json": { message: "Hello from GitHub Pages!", status: "success" },
+  "users.json": [
+    { id: 1, name: "Alice" },
+    { id: 2, name: "Bob" },
+  ],
+};
+
+// ===== CREATE API FOLDER =====
+if (!existsSync(apiFolder)) mkdirSync(apiFolder);
+
+// ===== CREATE JSON FILES =====
+for (const [fileName, data] of Object.entries(endpoints)) {
+  const filePath = path.join(apiFolder, fileName);
+  writeFileSync(filePath, JSON.stringify(data, null, 2));
+  console.log(`✅ Created endpoint: ${filePath}`);
+}
+
+// ===== OPTIONAL: COMMIT & PUSH TO GITHUB =====
+try {
+  execSync(`git add ${apiFolder}`, { stdio: "inherit" });
+  execSync(`git commit -m "Add static REST endpoints for GitHub Pages"`, { stdio: "inherit" });
+  execSync(`git push`, { stdio: "inherit" });
+  console.log("✅ Endpoints committed and pushed to GitHub");
+} catch (error) {
+  console.error("⚠️ Git commit/push failed. Make sure Git is initialized and remote exists.");
+}
+
+// ===== ACCESSING THE ENDPOINTS =====
+console.log("\n📡 Access your endpoints at:");
+for (const fileName of Object.keys(endpoints)) {
+  console.log(`https://${githubUser}.github.io/${repoName}/${apiFolder}/${fileName}`);
+}ts-node github-pages-rest.tsfetch("https://username.github.io/repo-name/api/data.json")
+  .then(res => res.json())
+  .then(data => console.log(data));
