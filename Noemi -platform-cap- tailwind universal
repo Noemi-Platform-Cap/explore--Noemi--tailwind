@@ -1,0 +1,183 @@
+#!/usr/bin/env ts-node
+import { writeFileSync } from "fs";
+import path from "path";
+
+// ====== CONFIGURE YOUR DETAILS HERE ======
+const creatorName = "Lashawn Spencer";
+const brandName = "Noemi Platform";
+const year = new Date().getFullYear();
+const website = "https://noemi.eth";
+const ocid = "YOUR-OCID-HERE"; // Replace with your OCID
+const fileName = "LICENSE.txt"; // Output license file name
+// =========================================
+
+// License content
+const licenseContent = `
+${brandName} Ownership & Creator License (${year})
+
+Copyright (c) ${year} ${creatorName}
+All rights reserved.
+
+1. Ownership
+All content, code, artwork, designs, and intellectual property in this repository/project are owned exclusively by ${creatorName}. You are recognized as the sole creator and originator.
+
+2. Permissions
+You may:
+- View the project publicly.
+- Use the work for personal reference or educational purposes only.
+
+You may NOT:
+- Copy, modify, or distribute any part of this work.
+- Claim ownership of this work.
+- Use the work for commercial purposes without explicit written permission.
+- Merge, fork, or create derivative works without authorization.
+
+3. Branding
+All uses of this work must include proper attribution to ${creatorName} and ${brandName}:
+Created by ${creatorName} | ${website} | ©${year}
+
+4. Creator ID
+OCID: ${ocid}
+
+5. Enforcement
+Unauthorized use of this work may result in legal action under copyright law.
+`;
+
+// Write the license to file
+const outputPath = path.join(process.cwd(), fileName);
+writeFileSync(outputPath, licenseContent);
+
+console.log(`✅ License file created: ${outputPath}`);#!/usr/bin/env ts-node
+import { writeFileSync, readFileSync, existsSync, readdirSync, statSync } from "fs";
+import path from "path";
+import { execSync } from "child_process";
+
+// ===== CONFIG =====
+const creatorName = "Lashawn Spencer";
+const brandName = "Noemi Platform";
+const website = "https://noemi.eth";
+const ocid = "YOUR-OCID-HERE"; // Replace with your OCID
+const licenseFileName = "LICENSE.txt";
+const versionFileName = ".license_version";
+const gitCommitMessage = "Update license with versioning + badge";
+
+// Languages & comment styles
+const commentStyles: Record<string, { start: string; end?: string }> = {
+  ts: { start: "// " },
+  js: { start: "// " },
+  py: { start: "# " },
+  java: { start: "/* ", end: " */" },
+  c: { start: "/* ", end: " */" },
+  cpp: { start: "// " },
+  go: { start: "// " },
+  rs: { start: "// " },
+  html: { start: "<!-- ", end: " -->" },
+  css: { start: "/* ", end: " */" },
+  sh: { start: "# " },
+};
+
+// ===== LICENSE VERSIONING =====
+let version = "1.0";
+if (existsSync(versionFileName)) {
+  const prev = readFileSync(versionFileName, "utf-8").trim();
+  const parts = prev.split(".").map(Number);
+  parts[1] += 1; // Increment minor version
+  version = parts.join(".");
+}
+writeFileSync(versionFileName, version);
+
+// ===== LICENSE CONTENT =====
+const year = new Date().getFullYear();
+const licenseText = `
+${brandName} Ownership & Creator License v${version} (${year})
+
+Copyright (c) ${year} ${creatorName}
+All rights reserved.
+
+1. Ownership
+All content, code, artwork, designs, and intellectual property in this repository/project are owned exclusively by ${creatorName}. You are recognized as the sole creator and originator.
+
+2. Permissions
+You may:
+- View the project publicly.
+- Use the work for personal reference or educational purposes only.
+
+You may NOT:
+- Copy, modify, or distribute any part of this work.
+- Claim ownership of this work.
+- Use the work for commercial purposes without explicit written permission.
+- Merge, fork, or create derivative works without authorization.
+
+3. Branding
+All uses of this work must include proper attribution to ${creatorName} and ${brandName}:
+Created by ${creatorName} | ${website} | ©${year}
+
+4. Creator ID
+OCID: ${ocid}
+
+5. Enforcement
+Unauthorized use of this work may result in legal action under copyright law.
+
+6. Version
+v${version}
+`;
+
+// ===== FUNCTIONS =====
+function licenseComment(lang: string) {
+  const style = commentStyles[lang];
+  if (!style) return licenseText;
+  if (style.end) return style.start + "\n" + licenseText + "\n" + style.end;
+  return licenseText.split("\n").map((line) => style.start + line).join("\n");
+}
+
+function createBadge() {
+  return `![License](https://img.shields.io/badge/License-${encodeURIComponent(
+    brandName + "-v" + version
+  )}-blue.svg)`;
+}
+
+function findCodeFiles(dir: string, exts: string[] = Object.keys(commentStyles)) {
+  let files: string[] = [];
+  readdirSync(dir).forEach((item) => {
+    const fullPath = path.join(dir, item);
+    const stats = statSync(fullPath);
+    if (stats.isDirectory()) {
+      files = files.concat(findCodeFiles(fullPath, exts));
+    } else if (exts.includes(path.extname(item).replace(".", ""))) {
+      files.push(fullPath);
+    }
+  });
+  return files;
+}
+
+// ===== WRITE LICENSE FILES =====
+writeFileSync(path.join(process.cwd(), licenseFileName), licenseText);
+writeFileSync(path.join(process.cwd(), "LICENSE_BADGE.md"), createBadge());
+console.log(`✅ LICENSE.txt and LICENSE_BADGE.md created (v${version})`);
+
+// ===== EMBED LICENSE INTO CODE FILES =====
+const codeFiles = findCodeFiles(process.cwd());
+codeFiles.forEach((file) => {
+  const ext = path.extname(file).replace(".", "");
+  const content = licenseComment(ext);
+  writeFileSync(file, content + "\n");
+  console.log(`✅ Embedded license into ${file}`);
+});
+
+// ===== GIT COMMANDS =====
+try {
+  const allFiles = [licenseFileName, "LICENSE_BADGE.md", versionFileName, ...codeFiles];
+  execSync(`git add ${allFiles.join(" ")}`, { stdio: "inherit" });
+  execSync(`git commit -m "${gitCommitMessage} v${version}"`, { stdio: "inherit" });
+  execSync(`git push`, { stdio: "inherit" });
+  console.log(`✅ License files committed and pushed to GitHub successfully (v${version})!`);
+} catch (error) {
+  console.error(
+    "❌ Git command failed. Ensure Git is installed, repository is initialized, and remote exists."
+  );
+}FROM node:20-alpine
+WORKDIR /app
+COPY create-license.ts ./
+RUN npm install -g ts-node typescript
+CMD ["ts-node", "create-license.ts"]docker build -t universal-license-generator .
+docker run --rm -v $(pwd):/app universal-license-generator
